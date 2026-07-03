@@ -1,0 +1,8 @@
+# Dependencias minimas de pipeline/ para arrancar (Fase 2).
+# COLMAP y Nerfstudio/gsplat NO van aca: son instalaciones mas pesadas (CUDA, build tools)
+# que se resuelven aparte cuando lleguemos a esa parte del pipeline (ver docs/CAPTURE.md).
+
+open3d
+numpy
+pillow
+requests

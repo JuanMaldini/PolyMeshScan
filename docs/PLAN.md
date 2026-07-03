@@ -61,9 +61,10 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
 
 ## 4. Roadmap por fases
 
-1. **Fase 0 — Setup**: confirmar si el iPhone tiene LiDAR; clonar RTAB-Map en `app/`; primer build
-   vía GitHub Actions; instalar en el iPhone vía AltStore/SideStore; ✅ colecciones de PocketBase
-   creadas; ✅ DNS de `scanner.vmoliver.cloud` creado (falta verificar que apunte al VPS).
+1. **Fase 0 — Setup**: ✅ iPhone confirmado con LiDAR; ✅ DNS de `scanner.vmoliver.cloud` apuntando
+   al VPS; ✅ colecciones de PocketBase creadas y corregidas; ✅ RTAB-Map registrado como submódulo
+   de `app/rtabmap`. Falta: decidir público/privado del repo, primer build vía GitHub Actions,
+   instalar en el iPhone vía AltStore/SideStore.
 2. **Fase 1 — Captura + muebles en tiempo real**: validar malla en vivo de RTAB-Map, y en paralelo
    integrar **RoomPlan** (objetivo central: muebles/paredes en vivo) — subida directa a
    `scanner_scans` con `status = pending`.
@@ -81,18 +82,26 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
 - [x] Decisión: GitHub Actions (no GitLab) para el build de iOS
 - [x] Decisión: RTAB-Map como base de captura + RoomPlan para muebles/estructura
 - [x] Dominio: `scanner.vmoliver.cloud` creado en Hostinger
-- [x] PocketBase: colecciones `scanner_users` y `scanner_scans` creadas (2 ajustes pendientes, ver
-      [`POCKETBASE.md`](POCKETBASE.md): `owner` debería ser relation Single no Multiple,
-      `processed_at` debería ser tipo Date no texto)
-- [ ] Confirmar modelo de iPhone (¿tiene LiDAR?)
-- [ ] Verificar que el DNS de `scanner.vmoliver.cloud` apunte a la IP del VPS (no al hosting de
-      Hostinger)
-- [ ] Repo en GitHub creado (público) para minutos gratis de runner macOS
-- [ ] Clonar RTAB-Map en `app/` y correr el primer build (`.github/workflows/build-ios.yml`)
+- [x] PocketBase: colecciones `scanner_users` y `scanner_scans` creadas, `owner`/`processed_at`
+      corregidos
+- [x] Confirmado: el iPhone tiene LiDAR
+- [x] DNS de `scanner.vmoliver.cloud` apuntando al VPS, confirmado
+- [x] RTAB-Map registrado como submódulo en `app/rtabmap` (`.gitmodules` + puntero al commit
+      `cb34c4b`); `Start.bat` → `scripts/setup-app.bat` hace `git submodule update --init
+      --recursive` para traer el contenido real en cualquier PC nueva
+- [x] `pipeline/requirements.txt` definido (Open3D, numpy, pillow, requests) — COLMAP/Nerfstudio
+      quedan para más adelante, son instalaciones más pesadas
+- [ ] **Decisión pendiente:** repo en GitHub creado pero **privado** — definir si pasa a público
+      (minutos de runner macOS gratis e ilimitados) o se queda privado (cuota gratis limitada, los
+      runners macOS consumen minutos 10x más rápido que Linux) — ver sección 7
+- [ ] Commitear y pushear lo que ya quedó preparado localmente (submódulo + `.gitmodules` +
+      cambios de docs) — yo no tengo credenciales para pushear a tu GitHub desde acá, así que este
+      paso lo hacés vos (o conectás el conector de GitHub para que pueda actuar directo)
+- [ ] Primer build vía GitHub Actions (`.github/workflows/build-ios.yml`, esqueleto en
+      [`INFRA.md`](INFRA.md))
 - [ ] Instalar AltStore/SideStore y hacer el primer sideload al iPhone
 - [ ] Caddy + `Caddyfile` en el VPS (esqueleto en [`INFRA.md`](INFRA.md))
 - [ ] Endpoint de `forward_auth` que valida contra PocketBase
-- [ ] Definir dependencias reales de `pipeline/` (Python + Open3D/COLMAP/Nerfstudio)
 - [ ] Decidir si sumar el iPhone a la tailnet de Tailscale (opcional, para refresh de AltServer)
 
 ## 6. Alternativas consideradas y descartadas
@@ -105,13 +114,19 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
 
 ## 7. Próximas decisiones abiertas
 
-- ¿Confirmás el modelo de tu iPhone (¿tiene LiDAR)? Define si arrancamos por malla en vivo/RoomPlan
-  o directo por fotogrametría en `pipeline/`.
-- ¿Repo público en GitHub confirmado?
+- **¿Repo público o privado?** Ahora mismo está privado. GitHub da minutos de Actions gratis en
+  ambos casos, pero: público = runners macOS gratis **ilimitados**; privado = cuota gratis mensual
+  (2000 min/mes en plan Free) que los runners macOS consumen **10x más rápido** que Linux — con
+  privado te vas a quedar sin minutos rápido si compilás seguido. Como el diseño ya asume que nunca
+  se commitean secretos reales (todo pasa por `.env`, nunca versionado), pasar a público no debería
+  exponer nada sensible. Recomiendo público; confirmá si estás de acuerdo.
+- ¿Cómo querés que yo actúe sobre tu GitHub de acá en adelante? Ahora mismo edito los archivos
+  locales de tu carpeta (que ya está clonada y apuntando a `origin/main`), pero no tengo
+  credenciales para hacer `git push` desde este entorno — el commit/push final lo hacés vos. Si
+  preferís que yo pueda actuar directo sobre el repo (crear el workflow, pushear, etc.), se conecta
+  el conector de GitHub desde la configuración de conectores.
 - ¿Sumamos el iPhone al tailnet de Tailscale, o preferís reinstalar por cable cuando haga falta?
 - ¿El alta de `scanner_scans` la hace la app del iPhone directo contra PocketBase, o preferís un
   endpoint intermedio?
 - Para Fase 4 (forma detallada de muebles): ¿alcanza con la caja/categoría de RoomPlan al
   principio, o el cruce con malla densa es prioritario desde ya?
-- ¿Arreglamos ya los dos ajustes de `scanner_scans` (`owner` Single, `processed_at` Date) o los
-  dejamos para cuando empecemos a escribir el worker?
