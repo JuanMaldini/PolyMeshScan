@@ -48,8 +48,10 @@ Reglas sugeridas:
 
 ## Integración con Caddy (`forward_auth`)
 
-El endpoint que Caddy llama (`localhost:8091/check` en el `Caddyfile` de [`INFRA.md`](INFRA.md)) es
-un servicio chico (a implementar en Fase 3) que:
+**Decidido: se implementa como ruta custom dentro del mismo PocketBase** con `pb_hooks` (un archivo
+`.pb.js` en la carpeta `pb_hooks/` de la instancia — PocketBase lo carga solo, sin proceso extra).
+Caddy hace `forward_auth` a `localhost:8090/check` (el propio PocketBase). El hook (a implementar
+en Fase 3):
 
 1. Lee la cookie/token de sesión de PocketBase de la request.
 2. La valida contra la API de PocketBase (`/api/collections/scanner_users/auth-refresh` o

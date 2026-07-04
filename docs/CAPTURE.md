@@ -98,9 +98,14 @@ algo que haya que inventar. Dos matices para no generar expectativas de más:
    comportamiento exacto disponible cuando lleguemos a esa fase, dado que Apple ajusta esto entre
    versiones de iOS.
 
-Ambos modos son complementarios: RTAB-Map da el detalle denso general, RoomPlan da estructura +
-semántica de muebles en vivo. RoomPlan es código Swift propio que se agrega a la app (mismo costo:
-cero; misma restricción de build que el resto, ver [`INFRA.md`](INFRA.md)).
+Ambos modos son complementarios: la malla densa da el detalle general, RoomPlan da estructura +
+semántica de muebles en vivo. **Decisión (revisión 2026-07-04): son excluyentes por sesión** — cada
+escaneo es `roomplan` **o** `raw_mesh`, nunca híbrido, porque ambos quieren controlar la sesión de
+AR (iOS 17 permite compartir una ARSession con RoomPlan, pero es terreno frágil que Apple ajusta
+entre versiones — se evalúa recién en Fase 4 si hace falta el cruce). Además, **la app v1 es propia
+en SwiftUI, no el fork de RTAB-Map**: la malla en vivo la da ARKit directo
+(`sceneReconstruction = .mesh` + export OBJ), y RTAB-Map queda para el post-procesado desktop en
+`pipeline/` — motivos y trade-offs en [`app/README.md`](../app/README.md).
 
 ## Fase 4 — forma detallada de cada mueble (cruce RoomPlan + malla densa)
 

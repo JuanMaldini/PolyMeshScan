@@ -1,16 +1,45 @@
 # app/
 
-App iOS de captura en tiempo real. Punto de partida: fork/customización de
-[RTAB-Map](https://github.com/introlab/rtabmap), no un capturador ARKit desde cero. Ver
-`../docs/CAPTURE.md` para el porqué y las dos técnicas de captura consideradas (malla densa vs
-RoomPlan).
+App iOS **propia en SwiftUI** (minimal, tema Tokyo Night): login contra PocketBase (solo login,
+sin registro — los usuarios se crean desde el admin), lista de escaneos, y dos modos de captura
+**excluyentes por sesión** (ver `../docs/CAPTURE.md`):
 
-`rtabmap/` es un **git submodule** (ver `../.gitmodules`) apuntando a `introlab/rtabmap`. No hace
-falta clonarlo a mano: `Start.bat` corre `scripts/setup-app.bat`, que hace
-`git submodule update --init --recursive` y trae el contenido real la primera vez que se ejecuta en
-una PC nueva. El código de la app en sí vive en `rtabmap/app/ios/RTABMapApp` una vez inicializado.
+- **roomplan** — muebles + estructura en vivo con la UI oficial de RoomPlan. Exporta USDZ +
+  `furniture_json` (cajas/categorías, listo para renderizar en el viewer con three.js).
+- **raw_mesh** — malla densa cruda con ARKit (`sceneReconstruction = .mesh`), visible en vivo.
+  Exporta OBJ + thumbnail.
 
-Si más adelante querés customizar el código y versionarlo en tu propio GitHub, la forma prolija es
-forkear `introlab/rtabmap` a tu cuenta y cambiar la URL en `.gitmodules` — no es necesario para
-arrancar.
+Ambos suben directo a `scanner_scans` con `status = done` (sin pipeline todavía).
 
+## Por qué app propia y no el fork de RTAB-Map (decisión revisada)
+
+El plan original partía del fork de RTAB-Map. Se cambió porque: (1) el objetivo central
+(muebles en vivo) lo resuelve RoomPlan, que es Swift puro; (2) la malla densa en vivo la da
+ARKit directamente; (3) compilar RTAB-Map iOS en CI tarda horas (OpenCV/PCL/VTK desde fuente)
+vs minutos de una app SwiftUI; (4) UI propia minimal vs hackear una app C++ existente.
+Lo que se pierde (SLAM con loop closure, la `.db` re-optimizable) pertenece a la calidad
+avanzada — queda para `pipeline/` (Fase 2), donde RTAB-Map desktop sí aplica.
+
+`rtabmap/` sigue como submodule solo como **referencia para el pipeline** — no participa del
+build de la app ni del CI.
+
+## Build
+
+No hay `.xcodeproj` versionado: `project.yml` + [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+lo generan en el runner de GitHub Actions (`.github/workflows/build-ios.yml`), que compila sin
+firma y publica `PolyMeshScan.ipa` como artifact. SideStore firma al instalar (ver
+`../docs/INFRA.md`).
+
+```
+app/
+├── project.yml            # definicion del proyecto (XcodeGen)
+└── PolyMeshScan/
+    ├── App.swift          # entrypoint
+    ├── Theme.swift        # paleta Tokyo Night + estilos
+    ├── PocketBase.swift   # auth + upload multipart a scanner_scans
+    ├── LoginView.swift
+    ├── HomeView.swift     # lista + menu de captura
+    ├── RoomPlanCaptureView.swift
+    ├── MeshCaptureView.swift
+    └── MeshExporter.swift # ARMeshAnchor -> OBJ
+```

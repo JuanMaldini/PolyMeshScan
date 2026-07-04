@@ -97,13 +97,14 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
       quedan para más adelante, son instalaciones más pesadas
 - [x] Repo en GitHub pasado a **público** (minutos de runner macOS gratis e ilimitados)
 - [x] Commit y push de todo lo preparado (submódulo, `.gitmodules`, docs, scripts)
-- [ ] Primer build vía GitHub Actions (`.github/workflows/build-ios.yml`, esqueleto en
-      [`INFRA.md`](INFRA.md))
-- [ ] Instalar AltStore/SideStore y hacer el primer sideload al iPhone
+- [x] App iOS v1 escrita (`app/PolyMeshScan/`, SwiftUI — ver sección 8)
+- [x] Workflow real de CI (`.github/workflows/build-ios.yml`: XcodeGen + build sin firma + `.ipa`
+      como artifact)
+- [x] iPhone sumado a la tailnet de Tailscale (notebook + iPhone listos)
+- [ ] Primer build vía GitHub Actions (push + revisar el job, ajustar si falla)
+- [ ] Instalar SideStore y hacer el primer sideload al iPhone (pasos guiados al llegar acá)
 - [ ] Caddy + `Caddyfile` en el VPS (esqueleto en [`INFRA.md`](INFRA.md))
-- [ ] Endpoint de `forward_auth` que valida contra PocketBase
-- [ ] Sumar el iPhone a la tailnet de Tailscale (decidido, ver sección 7 — necesario porque
-      descartaste el cable)
+- [ ] `forward_auth` vía `pb_hooks` de PocketBase (Fase 3)
 
 ## 6. Alternativas consideradas y descartadas
 
@@ -136,3 +137,24 @@ conector de GitHub desde la configuración de conectores — no es necesario par
   adelante si hace falta, no es parte del camino inicial.
 
 No quedan decisiones abiertas bloqueantes — el plan está cerrado para arrancar Fase 0.
+
+## 8. Decisiones nuevas (revisión 2026-07-04)
+
+- **App propia SwiftUI en vez de fork de RTAB-Map (Fase 1).** RoomPlan (el objetivo central) es
+  Swift puro y la malla densa en vivo la da ARKit directo; el fork de RTAB-Map implicaba builds de
+  CI de horas (OpenCV/PCL/VTK) y hackear una app C++ ajena. RTAB-Map queda para `pipeline/`
+  (Fase 2, versión desktop). Detalle y trade-offs en [`app/README.md`](../app/README.md). La app
+  v1 ya está escrita: login PocketBase (solo login, sin registro — usuarios se crean desde el
+  admin), lista de escaneos, captura RoomPlan y captura de malla, upload directo a
+  `scanner_scans`. Tema Tokyo Night, minimal.
+- **SideStore en vez de AltStore.** AltServer descubre el iPhone por mDNS, que Tailscale no
+  propaga — la tailnet no garantizaba el refresh de los 7 días. SideStore se refresca on-device;
+  la PC solo hace falta en la instalación inicial. Ver [`INFRA.md`](INFRA.md).
+- **Modos de captura excluyentes por sesión** (`roomplan` o `raw_mesh`, nunca híbrido): RoomPlan y
+  ARKit-mesh compiten por la sesión de AR; correrlos juntos es frágil. Ver
+  [`CAPTURE.md`](CAPTURE.md).
+- **`forward_auth` vía `pb_hooks` de PocketBase** (ruta custom en el mismo proceso), sin servicio
+  extra en el VPS. Ver [`POCKETBASE.md`](POCKETBASE.md).
+- **Viewer renderiza desde `furniture_json`** (cajas/paredes en three.js); el USDZ de RoomPlan
+  queda como archivo descargable (QuickLook en iPhone), no se intenta cargarlo en three.js.
+- **Límites de archivo confirmados en PocketBase**: `raw_file` hasta 10 GB, `thumbnail` 1 GB.
