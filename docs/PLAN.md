@@ -25,12 +25,12 @@ Reconstruir espacios interiores (cuartos, casas, ambientes) en 3D usando el LiDA
 |---|---|
 | Caso de uso | Interiores / inmobiliaria / ambientes, con foco en reconocimiento de muebles |
 | Prioridad | Tiempo real primero (malla + muebles en vivo); post-procesado es secundario/opcional |
-| Hardware disponible | iPhone (LiDAR a confirmar), PC con GPU dedicada. **No hay Mac.** |
+| Hardware disponible | iPhone **con LiDAR confirmado**, PC con GPU dedicada. **No hay Mac.** |
 | Presupuesto | Estrictamente gratis — nada de Apple Developer Program ($99/año), nada de SaaS |
 | CI/CD | **GitHub Actions**, repo público (runners macOS gratis) |
 | Dominio/DNS | Hostinger — subdominio `scanner.vmoliver.cloud` ya creado, apuntando al VPS |
 | Auth | PocketBase existente (misma instancia que `HYWorldWeb`) |
-| Redes | Tailscale ya en uso (notebook + VPS) — opcional, ver `INFRA.md` |
+| Redes | Tailscale ya en uso (notebook + VPS); confirmado que se suma el iPhone — necesario para el refresh de AltServer, ver `INFRA.md` |
 | Infraestructura | VPS propio para procesamiento/visor. Nada de plataformas externas de datos/visualización |
 | Perfil técnico | Vos planificás y validás, yo escribo el código (Swift, Python, web) |
 
@@ -63,18 +63,22 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
 
 1. **Fase 0 — Setup**: ✅ iPhone confirmado con LiDAR; ✅ DNS de `scanner.vmoliver.cloud` apuntando
    al VPS; ✅ colecciones de PocketBase creadas y corregidas; ✅ RTAB-Map registrado como submódulo
-   de `app/rtabmap`. Falta: decidir público/privado del repo, primer build vía GitHub Actions,
-   instalar en el iPhone vía AltStore/SideStore.
+   de `app/rtabmap`; ✅ repo público y pusheado. Falta: primer build vía GitHub Actions, instalar en
+   el iPhone vía AltStore/SideStore, sumar el iPhone a la tailnet de Tailscale.
 2. **Fase 1 — Captura + muebles en tiempo real**: validar malla en vivo de RTAB-Map, y en paralelo
    integrar **RoomPlan** (objetivo central: muebles/paredes en vivo) — subida directa a
-   `scanner_scans` con `status = pending`.
-3. **Fase 2 — Pipeline en `pipeline/`**: worker que consume `status = pending`, post-procesa
-   (RTAB-Map desktop → Open3D → export final, o fotogrametría si no hay LiDAR), actualiza
-   `status`/`processed_file`.
+   `scanner_scans`. **Esta fase ya es un producto usable por sí sola, sin ninguna PC prendida**: el
+   procesamiento real (mesh + reconocimiento de muebles) ocurre 100% en el iPhone; `status` puede
+   guardarse directo en `done` acá (ver [`CAPTURE.md`](CAPTURE.md)).
+3. **Fase 2 — Pipeline en `pipeline/` (opcional, diferida)**: worker que consume escaneos con
+   `status = pending`, post-procesa (RTAB-Map desktop → Open3D → export final, o fotogrametría si
+   no hay LiDAR), actualiza `status`/`processed_file`. No hace falta para usar la Fase 1 — recién
+   se activa cuando se quiera mejorar calidad de algo ya capturado.
 4. **Fase 3 — Visor en `viewer/`**: Potree/three.js en `scanner.vmoliver.cloud`, protegido con
    `forward_auth` de Caddy contra PocketBase.
 5. **Fase 4 — Calidad avanzada (opcional)**: Gaussian Splatting/NeRF; cruce RoomPlan + malla densa
-   para forma detallada de cada mueble (no solo caja/categoría).
+   para forma detallada de cada mueble (no solo caja/categoría) — confirmado que arrancamos sin
+   esto, se evalúa después.
 
 ## 5. Estado actual (checklist)
 
@@ -91,18 +95,15 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
       --recursive` para traer el contenido real en cualquier PC nueva
 - [x] `pipeline/requirements.txt` definido (Open3D, numpy, pillow, requests) — COLMAP/Nerfstudio
       quedan para más adelante, son instalaciones más pesadas
-- [ ] **Decisión pendiente:** repo en GitHub creado pero **privado** — definir si pasa a público
-      (minutos de runner macOS gratis e ilimitados) o se queda privado (cuota gratis limitada, los
-      runners macOS consumen minutos 10x más rápido que Linux) — ver sección 7
-- [ ] Commitear y pushear lo que ya quedó preparado localmente (submódulo + `.gitmodules` +
-      cambios de docs) — yo no tengo credenciales para pushear a tu GitHub desde acá, así que este
-      paso lo hacés vos (o conectás el conector de GitHub para que pueda actuar directo)
+- [x] Repo en GitHub pasado a **público** (minutos de runner macOS gratis e ilimitados)
+- [x] Commit y push de todo lo preparado (submódulo, `.gitmodules`, docs, scripts)
 - [ ] Primer build vía GitHub Actions (`.github/workflows/build-ios.yml`, esqueleto en
       [`INFRA.md`](INFRA.md))
 - [ ] Instalar AltStore/SideStore y hacer el primer sideload al iPhone
 - [ ] Caddy + `Caddyfile` en el VPS (esqueleto en [`INFRA.md`](INFRA.md))
 - [ ] Endpoint de `forward_auth` que valida contra PocketBase
-- [ ] Decidir si sumar el iPhone a la tailnet de Tailscale (opcional, para refresh de AltServer)
+- [ ] Sumar el iPhone a la tailnet de Tailscale (decidido, ver sección 7 — necesario porque
+      descartaste el cable)
 
 ## 6. Alternativas consideradas y descartadas
 
@@ -112,21 +113,26 @@ reemplaza ni simula Xcode). Todos son placeholders con TODO hasta que avance cad
 - **GitLab (CI propio)**: descartado a favor de GitHub Actions por los runners macOS gratuitos.
 - **GitLab SaaS runners macOS**: descartado por costo.
 
-## 7. Próximas decisiones abiertas
+## 7. Decisiones resueltas (última ronda)
 
-- **¿Repo público o privado?** Ahora mismo está privado. GitHub da minutos de Actions gratis en
-  ambos casos, pero: público = runners macOS gratis **ilimitados**; privado = cuota gratis mensual
-  (2000 min/mes en plan Free) que los runners macOS consumen **10x más rápido** que Linux — con
-  privado te vas a quedar sin minutos rápido si compilás seguido. Como el diseño ya asume que nunca
-  se commitean secretos reales (todo pasa por `.env`, nunca versionado), pasar a público no debería
-  exponer nada sensible. Recomiendo público; confirmá si estás de acuerdo.
-- ¿Cómo querés que yo actúe sobre tu GitHub de acá en adelante? Ahora mismo edito los archivos
-  locales de tu carpeta (que ya está clonada y apuntando a `origin/main`), pero no tengo
-  credenciales para hacer `git push` desde este entorno — el commit/push final lo hacés vos. Si
-  preferís que yo pueda actuar directo sobre el repo (crear el workflow, pushear, etc.), se conecta
-  el conector de GitHub desde la configuración de conectores.
-- ¿Sumamos el iPhone al tailnet de Tailscale, o preferís reinstalar por cable cuando haga falta?
-- ¿El alta de `scanner_scans` la hace la app del iPhone directo contra PocketBase, o preferís un
-  endpoint intermedio?
-- Para Fase 4 (forma detallada de muebles): ¿alcanza con la caja/categoría de RoomPlan al
-  principio, o el cruce con malla densa es prioritario desde ya?
+Nota sobre workflow con Claude: yo no tengo credenciales para hacer `git push` desde este entorno —
+edito los archivos locales de tu carpeta, y el commit/push lo hacés vos (como ya veníamos haciendo,
+funciona bien). Si en algún momento preferís que actúe directo sobre el repo vía API, se conecta el
+conector de GitHub desde la configuración de conectores — no es necesario para seguir avanzando.
+
+- **Tailscale: sí, confirmado.** Descartado el cable, Tailscale deja de ser "opcional" — es la
+  única forma gratis de que el refresh de AltServer funcione sin coincidir de red. El motivo real:
+  la firma gratuita de Apple expira a los 7 días sí o sí (regla de Apple, no evitable sin pagar), y
+  ese refresh necesita que el iPhone y la máquina que corre AltServer se puedan ver en red. Sin
+  WiFi compartida y sin cable, la única alternativa gratis es una VPN — y como ya tenés Tailscale
+  andando, sumar el iPhone ahí es directamente la opción de menor esfuerzo. (La única otra manera
+  de evitar el problema de raíz sería pagar el Apple Developer Program para tener una firma de
+  ~1 año en vez de 7 días — descartado por presupuesto.)
+- **Alta de `scanner_scans`: confirmado, siempre directo desde la app del iPhone a PocketBase**, sin
+  endpoint intermedio. Las reglas de `createRule`/`updateRule` en [`POCKETBASE.md`](POCKETBASE.md)
+  ya contemplan esto.
+- **Fase 4 (forma detallada de muebles): confirmado, por defecto simple.** Arrancamos con la
+  caja/categoría de RoomPlan tal cual, sin cruzarla con la malla densa; el cruce queda para más
+  adelante si hace falta, no es parte del camino inicial.
+
+No quedan decisiones abiertas bloqueantes — el plan está cerrado para arrancar Fase 0.

@@ -83,18 +83,19 @@ Confirmado: dominio gestionado en **Hostinger**, subdominio `scanner.vmoliver.cl
   Caddy) que valida el token/cookie de PocketBase — se define en detalle en
   [`POCKETBASE.md`](POCKETBASE.md).
 
-## Redes: Tailscale (opcional, ya lo usás)
+## Redes: Tailscale (confirmado, ya lo usás)
 
-Ya está en tu notebook + VPS. Vale la pena separar los dos problemas que puede resolver:
+Ya está en tu notebook + VPS. Dos problemas distintos, uno de los cuales sí lo necesita:
 
 1. **Subir escaneos del iPhone al pipeline/PocketBase**: no necesita Tailscale — el teléfono habla
    directo por HTTPS contra `scanner.vmoliver.cloud` (dominio público + auth), en WiFi o datos
    móviles. Ninguno de los dos casos de tu flujo (procesar en el celular, o procesar después cuando
    prendas el worker) depende de estar en la misma red.
-2. **Refrescar la firma de la app cada 7 días (AltServer/SideStore)**: esto sí suele pedir que
-   iPhone y PC estén en la misma red local. Sumar el iPhone a tu tailnet existente es la forma más
-   cómoda de resolverlo sin depender de coincidir en WiFi física. Si no importa reinstalar por cable
-   cuando no coincidan, se puede saltear Tailscale por completo.
+2. **Refrescar la firma de la app cada 7 días (AltServer/SideStore)**: la firma gratuita de Apple
+   expira a los 7 días sí o sí (regla de Apple, no evitable sin pagar el Developer Program), y ese
+   refresh necesita que el iPhone y la máquina que corre AltServer se puedan ver en red. Descartado
+   el cable, **sumar el iPhone a tu tailnet existente** es la única forma gratis de que esto
+   funcione sin depender de coincidir en WiFi física — confirmado, se hace.
 
-Conclusión: Tailscale queda como mejora de comodidad para el refresco de la app, no como requisito.
+Pendiente en el checklist: agregar el iPhone a la tailnet (la app oficial de Tailscale para iOS).
 Todo lo demás (subir escaneos, procesar, ver el visor) funciona igual sin él.

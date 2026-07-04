@@ -20,19 +20,20 @@ sí mismo). Esta colección es la que valida el `forward_auth` de Caddy antes de
 ## `scanner_scans` (tipo Base)
 
 Nombre real que usaste (no `scans` a secas) — actualizado en toda la documentación para que
-coincida con lo que ya está creado.
+coincida con lo que ya está creado. Ya con los dos ajustes hechos (`owner` Single, `processed_at`
+Date).
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `name` | text (requerido) | ej. "Living room — 2026-07-08" |
-| `owner` | relation → `scanner_users` | quién lo capturó — **revisar: en el screenshot está en "Multiple", debería ser "Single"** (un escaneo tiene un solo dueño) |
+| `owner` | relation → `scanner_users` (Single) | quién lo capturó |
 | `capture_mode` | select (`raw_mesh`, `roomplan`, `photogrammetry`) | qué técnica se usó — ver [`CAPTURE.md`](CAPTURE.md) |
-| `status` | select (`pending`, `processing`, `done`, `error`) — default `pending` | campo clave de la cola async |
+| `status` | select (`pending`, `processing`, `done`, `error`) | campo clave de la cola async — en la práctica hoy la app escribe `done` directo al crear (ver nota abajo y [`CAPTURE.md`](CAPTURE.md)); `pending` recién se usa cuando exista el worker de `pipeline/` (Fase 2) |
 | `raw_file` | file (single) | export crudo del iPhone — para `raw_mesh` idealmente el `.db` de RTAB-Map, no solo un `.ply` ya aplanado (ver `CAPTURE.md`) |
-| `processed_file` | file (single) | resultado del pipeline, lo llena el worker |
+| `processed_file` | file (single) | resultado del pipeline; hasta que exista el worker (Fase 2), puede quedar vacío o ser el mismo archivo que `raw_file` |
 | `thumbnail` | file (single) | miniatura para el dashboard |
 | `furniture_json` | json | si `capture_mode = roomplan`: categorías + posición de muebles detectados |
-| `processed_at` | — | **revisar: en el screenshot quedó como texto; conviene tipo Date** para poder ordenar/filtrar por fecha de procesado |
+| `processed_at` | date | cuándo terminó el worker (no aplica todavía, Fase 2) |
 | `error_log` | text | si `status = error` |
 | `notes` | text | libre |
 | `created`, `updated` | date | automáticos, no hace falta definirlos |

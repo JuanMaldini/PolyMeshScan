@@ -19,6 +19,18 @@ cuando quieras (`Start.bat`), toma los `pending`, los procesa uno por uno, y act
 `processing` → `done`/`error`. Es una cola de trabajo asíncrona clásica; el tiempo real ya quedó
 resuelto en el teléfono, esto es solo para el paso opcional/pesado.
 
+**¿Necesitás un runner/worker corriendo en la PC para que esto funcione? No, para lo que vas a usar
+ahora — no.** Como tu iPhone tiene LiDAR y el objetivo central (RoomPlan: paredes + muebles en
+tiempo real) se resuelve entero on-device, el flujo del día a día es: escaneás → la app exporta el
+resultado (ya "terminado", no crudo) → lo sube directo a `scanner_scans` → listo, sin que ninguna PC
+tenga que estar prendida ni conectada. El worker de `pipeline/` (y por lo tanto `Start.bat`
+corriendo en tu PC) recién hace falta cuando decidas usar Fase 2/4 — mejorar calidad con Open3D,
+o el cruce RoomPlan + malla densa para forma detallada de muebles — que ya definimos como algo
+para más adelante, no parte del camino inicial. Hasta entonces, `scanner_scans.status` puede
+guardarse directamente en `done` en vez de `pending` (no hay nada pendiente de procesar), y
+`processed_file` puede quedar vacío o ser el mismo archivo que `raw_file` hasta que exista un
+pipeline real que lo mejore.
+
 ## Requisito de hardware: LiDAR
 
 El feedback en tiempo real de malla densa (`ARWorldTrackingConfiguration.sceneReconstruction =
@@ -26,7 +38,9 @@ El feedback en tiempo real de malla densa (`ARWorldTrackingConfiguration.sceneRe
 
 Tienen LiDAR: iPhone 12 Pro/Pro Max en adelante — **solo modelos "Pro"/"Pro Max"** (13 Pro, 14 Pro,
 15 Pro, 16 Pro, etc.), y iPad Pro 2020+. Los iPhone "normales" (no Pro) no tienen LiDAR, sin
-excepción. **Pendiente:** confirmar el modelo exacto (Ajustes → General → Información).
+excepción. **Confirmado: el iPhone de Juan tiene LiDAR** — el camino real (más abajo) es el que
+aplica; la sección de "sin LiDAR" queda solo como referencia si en el futuro se agrega otro
+dispositivo sin el sensor.
 
 **Sin LiDAR**, no hay reconstrucción en vivo posible. El camino pasa a ser 100% responsabilidad de
 `pipeline/`:
@@ -94,3 +108,15 @@ Si además de "hay un sofá acá" se quiere la forma real de ese sofá específi
 RoomPlan (dónde está, qué categoría es) con la malla densa de RTAB-Map (recortar la geometría real
 dentro de esa caja). No viene resuelto de fábrica — es ingeniería propia que armamos nosotros más
 adelante, pero sigue siendo 100% on-device y gratis (sin servicios de IA externos de por medio).
+
+## Referencias visuales por tipo de producto/salida
+
+| Producto | Fase | Referencia |
+|---|---|---|
+| RoomPlan — estructura + muebles en vivo | Fase 1 (núcleo) | [Overview oficial de Apple](https://developer.apple.com/augmented-reality/roomplan/), [WWDC22 — Create parametric 3D room scans](https://developer.apple.com/videos/play/wwdc2022/10127/), [WWDC23 — mejoras](https://developer.apple.com/videos/play/wwdc2023/10192/) |
+| Malla cruda densa (RTAB-Map) | Fase 1 (alternativo/complementario) | [Video demo en YouTube](https://www.youtube.com/watch?v=rVpIcrgD5c0), [página del proyecto](http://introlab.github.io/rtabmap/), [App Store](https://apps.apple.com/us/app/rtab-map-3d-lidar-scanner/id1564774365) (para ver capturas, aunque nuestra app sea el fork propio) |
+| Visor self-hosted de point clouds | Fase 3 | [Demo en vivo de Potree](https://potree.org/potree/examples/viewer.html) |
+| Gaussian Splatting (calidad avanzada) | Fase 4 (opcional) | [Nerfstudio — método Splatfacto](https://docs.nerf.studio/nerfology/methods/splat.html), [gsplat en GitHub](https://github.com/nerfstudio-project/gsplat) |
+
+Notar que ninguno de estos links es "el producto final" — son referencias de la técnica/tecnología
+detrás de cada fase, para tener una idea visual de qué tipo de resultado esperar en cada una.
